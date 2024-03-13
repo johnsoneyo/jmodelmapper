@@ -3,6 +3,9 @@ package de.johnsoneyo.mapper;
 import de.johnsoneyo.mapper.exception.JModelMapperException;
 import org.assertj.core.data.Index;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Spy;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 import java.util.Map;
@@ -13,8 +16,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  *
  */
+@ExtendWith(MockitoExtension.class)
 class JModelMapperTest {
 
+    @Spy
+    JModelMapper modelMapper;
 
     @Test
     void map_ShouldNotThrowException_WhenMappingNestedObjects() {
@@ -24,12 +30,13 @@ class JModelMapperTest {
         Integer age = 1;
         String sex = "test-sex";
         Person expected = new Person(name, age, sex, List.of(new Person.Address("test-street-1", "test-zipcode-1",
-                        new Person.Address.ExtraInfo("trrr")),
+                        new Person.Address.ExtraInfo("11000011.000111")),
                 new Person.Address("test-street-2", "test-zipcode-2", new Person.Address.ExtraInfo("test-extra-info"))),
                 Map.of("key", "value"));
 
         //when
-        PersonDto actual = JModelMapper.map(expected, PersonDto.class);
+
+        PersonDto actual = modelMapper.map(expected, PersonDto.class);
 
         // then
         assertThat(actual)
@@ -50,7 +57,7 @@ class JModelMapperTest {
         Extra expected = new Extra(1L);
 
         // then
-        assertThatThrownBy(() -> JModelMapper.map(expected, ExtraDto.class))
+        assertThatThrownBy(() -> JModelMapperUtils.map(expected, ExtraDto.class))
                 .isInstanceOf(JModelMapperException.class)
                 .hasMessage("error occurred while mapping entity")
                 .hasCauseExactlyInstanceOf(IllegalArgumentException.class);
