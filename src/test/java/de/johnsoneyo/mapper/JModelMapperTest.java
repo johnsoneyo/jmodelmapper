@@ -1,6 +1,7 @@
 package de.johnsoneyo.mapper;
 
 import de.johnsoneyo.mapper.exception.JModelMapperException;
+import org.assertj.core.api.Condition;
 import org.assertj.core.data.Index;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -43,11 +44,13 @@ class JModelMapperTest {
                 .isNotNull()
                 .hasFieldOrPropertyWithValue("name", name).hasFieldOrPropertyWithValue("age", age).hasFieldOrPropertyWithValue("sex", sex);
 
+        Condition<PersonDto.AddressDto> addressDtoCondition = new Condition<>(addressDto ->
+                addressDto.getExtraInfo()!= null && addressDto.getExtraInfo().coordinates == "11000011.000111", "extra info is not null");
         assertThat(actual.getAddresses())
                 .isNotEmpty()
                 .hasSize(2)
                 .satisfies((addressDto -> assertThat(addressDto)
-                        .hasFieldOrPropertyWithValue("streetName", "test-street-1")), Index.atIndex(0));
+                        .hasFieldOrPropertyWithValue(   "streetName", "test-street-1").has(addressDtoCondition)), Index.atIndex(0));
     }
 
     @Test

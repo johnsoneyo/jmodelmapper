@@ -8,8 +8,13 @@ import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.function.Supplier;
 
 /**
  *
@@ -20,21 +25,19 @@ final class JModelMapperUtils {
     private static final String GEN_ERROR_MESSAGE = "error occurred while mapping entity";
 
     /**
-     *
+     * Holds class to supplier collection
      */
-    JModelMapperUtils() {
-    }
-
+    private static final Map<Class, Supplier<Collection<Object>>> collectionFactory = ImmutableCollectionFactory.collectionFactory();
 
     /**
-     * @param object source object to be converted
+     * @param object      source object to be converted
      * @param outputClass destination class instance to map object
      *                    <p>
      *                    It is mandatory that the class has a no arg constructor, setters and getters are not necessary
      *                    as it uses reflection to set the fields
      *                    </p>
-     * @param <INPUT> source input param
-     * @param <OUTPUT> destination output param
+     * @param <INPUT>     source input param
+     * @param <OUTPUT>    destination output param
      * @return mapped object
      * @throws JModelMapperException when matching fields are not of same data type
      */
@@ -98,15 +101,15 @@ final class JModelMapperUtils {
                         Object oput_ = null;
                         if (outputField != null && outputField.getType() == List.class) {
 
-                            ParameterizedType listType = (ParameterizedType) outputField.getGenericType();
+                            ParameterizedType collectionType = (ParameterizedType) outputField.getGenericType();
 
-                            oput_ = Class.forName(listType.getActualTypeArguments()[0].getTypeName()).getDeclaredConstructor().newInstance();
-                            List<Object> list = (List<Object>) outputField.get(output);
-                            if (list != null) {
-                                list.add(oput_);
+                            oput_ = Class.forName(collectionType.getActualTypeArguments()[0].getTypeName()).getDeclaredConstructor().newInstance();
+                            Collection<Object> clctn = (Collection<Object>) outputField.get(output);
+                            if (clctn != null) {
+                                clctn.add(oput_);
                             } else {
                                 outputField.setAccessible(true);
-                                List<Object> objectList = new ArrayList<>();
+                                Collection<Object> objectList = collectionFactory.get(outputField.getType()).get();
                                 objectList.add(oput_);
                                 outputField.set(output, objectList);
                             }
@@ -118,17 +121,23 @@ final class JModelMapperUtils {
                 } else {
 
                     Field outputField = getField(output, field.getName());
+                    Object nonJavaObject = null;
                     if (outputField != null) {
 
+                        outputField.setAccessible(true);
                         if (obj.getClass().getPackageName().startsWith("java")) {
-
-                            outputField.setAccessible(true);
                             outputField.set(output, obj);
+                        } else {
+                            nonJavaObject = outputField.getType().getDeclaredConstructor().newInstance();
+                            outputField.set(output, nonJavaObject);
                         }
                     }
-                    map(obj, output);
-                }
 
+                    if (nonJavaObject != null) {
+                        map(obj, nonJavaObject);
+                    } else
+                        map(obj, output);
+                }
             }
 
         } catch (Exception exception) {
@@ -145,4 +154,21 @@ final class JModelMapperUtils {
             return null;
         }
     }
+
+
+    /**
+     * Defines a class collection instance in the factory method
+     */
+    static class ImmutableCollectionFactory {
+        /**
+         * @param <T>
+         * @return lazy initialization of new immutable collection to be created
+         */
+        static <T> Map<Class, Supplier<Collection<T>>> collectionFactory() {
+            return Map.of(List.class, () -> new ArrayList<>(),
+                    Set.class, () -> new HashSet<>(),
+                    LinkedList.class, () -> new LinkedList<>());
+        }
+    }
+
 }
