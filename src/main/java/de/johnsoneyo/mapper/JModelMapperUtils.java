@@ -1,10 +1,15 @@
 package de.johnsoneyo.mapper;
 
+import de.johnsoneyo.mapper.decorator.TransformToType;
+import de.johnsoneyo.mapper.decorator.TypeAdapter;
 import de.johnsoneyo.mapper.exception.JModelMapperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -40,6 +45,7 @@ final class JModelMapperUtils {
      * @param <OUTPUT>    destination output param
      * @return mapped object
      * @throws JModelMapperException when matching fields are not of same data type
+     * @see JModelMapperException#getCause() when constructor of class is not defined in destination class
      */
     static <INPUT, OUTPUT> OUTPUT map(final INPUT object, final Class<OUTPUT> outputClass) {
 
@@ -65,22 +71,27 @@ final class JModelMapperUtils {
 
         try {
 
+            // break chain when object is null
             if (object == null) {
                 return;
             }
 
+            // break chain when class is a java runtime class
             if (object.getClass().getPackageName().startsWith("java")) {
                 return;
             }
 
             Field[] fields = object.getClass().getDeclaredFields();
             if (fields.length == 0) {
+                // break chain if there are no more fields in the class
                 return;
             }
 
+            // iterate through fields in the bean class
             for (Field field : fields) {
                 Object obj = field.get(object);
 
+                // check if field is a collection type
                 if (obj instanceof Collection) {
                     Collection<Object> collection = (Collection<Object>) obj;
                     for (Object o : collection) {
@@ -106,8 +117,12 @@ final class JModelMapperUtils {
                             oput_ = Class.forName(collectionType.getActualTypeArguments()[0].getTypeName()).getDeclaredConstructor().newInstance();
                             Collection<Object> clctn = (Collection<Object>) outputField.get(output);
                             if (clctn != null) {
+                                // set newly created object in list which is further updated by reference
+                                /**
+                                 * @see #map(Object, Object)
+                                 */
                                 clctn.add(oput_);
-                            } else {
+                            } else {  // initialize an empty collection when mapping null field
                                 outputField.setAccessible(true);
                                 Collection<Object> objectList = collectionFactory.get(outputField.getType()).get();
                                 objectList.add(oput_);
@@ -121,21 +136,25 @@ final class JModelMapperUtils {
                 } else {
 
                     Field outputField = getField(output, field.getName());
-                    Object nonJavaObject = null;
+                    Object customJavaObject = null;
                     if (outputField != null) {
 
                         outputField.setAccessible(true);
                         if (obj.getClass().getPackageName().startsWith("java")) {
-                            outputField.set(output, obj);
+                            Object updatedObj = updateField(outputField, obj);
+                            // sets a java field in the object
+                            outputField.set(output, updatedObj);
                         } else {
-                            nonJavaObject = outputField.getType().getDeclaredConstructor().newInstance();
-                            outputField.set(output, nonJavaObject);
+                            customJavaObject = outputField.getType().getDeclaredConstructor().newInstance();
+                            // set a bean field in the object
+                            outputField.set(output, customJavaObject);
                         }
                     }
 
-                    if (nonJavaObject != null) {
-                        map(obj, nonJavaObject);
-                    } else
+                    // send a custom java object for further division
+                    if (customJavaObject != null) {
+                        map(obj, customJavaObject);
+                    } else  // end iteration of jre object
                         map(obj, output);
                 }
             }
@@ -145,6 +164,35 @@ final class JModelMapperUtils {
             throw new JModelMapperException(GEN_ERROR_MESSAGE, exception);
         }
     }
+
+    private static Object updateField(final Field outputField, final Object obj) {
+
+        if (outputField.getType().equals(obj.getClass())) return obj;
+
+        Annotation[] annotations = outputField.getDeclaredAnnotations();
+
+        if (Utils.isNotEmpty(annotations)) {
+            for (Annotation annot : annotations) {
+                if (annot instanceof TransformToType) {
+                    Class<? extends TypeAdapter> transformToType = ((TransformToType) annot).typeAdapter();
+                    Method convertMethod = transformToType.getDeclaredMethods()[0];
+
+                    try {
+                        Object typeAdapterInstance = transformToType.getDeclaredConstructor().newInstance();
+                        convertMethod.setAccessible(true);
+                        return convertMethod.invoke(typeAdapterInstance, obj);
+                    } catch (InstantiationException | IllegalAccessException | InvocationTargetException |
+                             NoSuchMethodException e) {
+                        LOG.error("updateField: error occurred in updating transforming field object", e);
+                        throw new JModelMapperException("error occurred updating object in type adapter", e);
+                    }
+                }
+            }
+        }
+
+        return obj;
+    }
+
 
     private static Field getField(Object object, String fieldName) {
         try {
@@ -169,6 +217,22 @@ final class JModelMapperUtils {
                     Set.class, () -> new HashSet<>(),
                     LinkedList.class, () -> new LinkedList<>());
         }
+    }
+
+    /**
+     * Helper class for commons logic
+     */
+    static class Utils {
+
+
+        static <T> boolean isEmpty(T... t) {
+            return t == null || t.length == 0;
+        }
+
+        static <T> boolean isNotEmpty(T... t) {
+            return t != null && t.length > 0;
+        }
+
     }
 
 }

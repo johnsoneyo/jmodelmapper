@@ -1,5 +1,7 @@
 package de.johnsoneyo.mapper;
 
+import de.johnsoneyo.mapper.decorator.StringToUUIDTypeAdapter;
+import de.johnsoneyo.mapper.decorator.TransformToType;
 import de.johnsoneyo.mapper.exception.JModelMapperException;
 import org.assertj.core.api.Condition;
 import org.assertj.core.data.Index;
@@ -10,6 +12,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -45,12 +48,12 @@ class JModelMapperTest {
                 .hasFieldOrPropertyWithValue("name", name).hasFieldOrPropertyWithValue("age", age).hasFieldOrPropertyWithValue("sex", sex);
 
         Condition<PersonDto.AddressDto> addressDtoCondition = new Condition<>(addressDto ->
-                addressDto.getExtraInfo()!= null && addressDto.getExtraInfo().coordinates == "11000011.000111", "extra info is not null");
+                addressDto.getExtraInfo() != null && addressDto.getExtraInfo().coordinates == "11000011.000111", "extra info is not null");
         assertThat(actual.getAddresses())
                 .isNotEmpty()
                 .hasSize(2)
                 .satisfies((addressDto -> assertThat(addressDto)
-                        .hasFieldOrPropertyWithValue(   "streetName", "test-street-1").has(addressDtoCondition)), Index.atIndex(0));
+                        .hasFieldOrPropertyWithValue("streetName", "test-street-1").has(addressDtoCondition)), Index.atIndex(0));
     }
 
     @Test
@@ -65,6 +68,21 @@ class JModelMapperTest {
                 .hasMessage("error occurred while mapping entity")
                 .hasCauseExactlyInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    void map_ShouldMapWithoutException_WhenStringToUUIDAdapterUsed() {
+
+        // given
+        String requesterId = "a0200f66-f5b2-4cc7-accd-9810f1b1471f";
+        Request request = new Request(requesterId);
+
+        // when
+        RequestDto requestDto = modelMapper.map(request, RequestDto.class);
+
+        // then
+        assertThat(requestDto.getRequesterId()).isEqualTo(UUID.fromString(requesterId));
+    }
+
 
     /**
      *
@@ -110,7 +128,6 @@ class JModelMapperTest {
             }
         }
     }
-
 
     static class PersonDto {
 
@@ -192,6 +209,27 @@ class JModelMapperTest {
         String value;
 
         public ExtraDto() {
+        }
+    }
+
+    static class Request {
+        String requesterId;
+
+        public Request(String requesterId) {
+            this.requesterId = requesterId;
+        }
+    }
+
+    static class RequestDto {
+
+        @TransformToType(typeAdapter = StringToUUIDTypeAdapter.class)
+        UUID requesterId;
+
+        public RequestDto() {
+        }
+
+        public UUID getRequesterId() {
+            return requesterId;
         }
     }
 }
