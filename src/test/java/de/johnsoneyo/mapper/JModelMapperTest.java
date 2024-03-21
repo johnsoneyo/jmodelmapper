@@ -1,5 +1,7 @@
 package de.johnsoneyo.mapper;
 
+import de.johnsoneyo.mapper.decorator.ClassFieldMapping;
+import de.johnsoneyo.mapper.decorator.SourceFieldMapping;
 import de.johnsoneyo.mapper.decorator.StringToUUIDTypeAdapter;
 import de.johnsoneyo.mapper.decorator.TransformToType;
 import de.johnsoneyo.mapper.exception.JModelMapperException;
@@ -81,6 +83,22 @@ class JModelMapperTest {
 
         // then
         assertThat(requestDto.getRequesterId()).isEqualTo(UUID.fromString(requesterId));
+    }
+
+    @Test
+    void map_ShouldMapWithoutException_WhenCustomFieldMapIsUsed() {
+
+        // given
+        String requesterId = "a0200f66-f5b2-4cc7-accd-9810f1b1471f";
+        String id = "test-id";
+        Request request = new Request(requesterId, id);
+
+        // when
+        RequestDto requestDto = modelMapper.map(request, RequestDto.class);
+
+        // then
+        assertThat(requestDto.getRequesterId()).isEqualTo(UUID.fromString(requesterId));
+        assertThat(requestDto.getIdentifier()).isEqualTo(id);
     }
 
 
@@ -214,6 +232,12 @@ class JModelMapperTest {
 
     static class Request {
         String requesterId;
+        String id;
+
+        public Request(String requesterId, String id) {
+            this.requesterId = requesterId;
+            this.id = id;
+        }
 
         public Request(String requesterId) {
             this.requesterId = requesterId;
@@ -225,11 +249,18 @@ class JModelMapperTest {
         @TransformToType(typeAdapter = StringToUUIDTypeAdapter.class)
         UUID requesterId;
 
+        @ClassFieldMapping(fields = {@SourceFieldMapping(sourceField = "id")})
+        String identifier;
+
         public RequestDto() {
         }
 
         public UUID getRequesterId() {
             return requesterId;
+        }
+
+        public String getIdentifier() {
+            return identifier;
         }
     }
 }

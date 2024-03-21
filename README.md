@@ -18,16 +18,16 @@ JModel Mapper is an open source library used to map simple to deep object nestin
   - Has getter fields for returning the values atleast ( no mandatory )
 
 ### Limitations
-- Has no provision for custom field mapping using a supplier
+- No Kotlin or Scala equivalent
 
 ### Usage
 
 - Create bean instance or a singleton
 ```java
-JModelMapper modelMapper = new JModelMapper();
-```
-- Then supply source object and destination class
-```java
+static final JModelMapper modelMapper = new JModelMapper();
+
+## Then supply source object and destination class
+
   Person expected = new Person(name, age, sex, List.of(new Person.Address("test-street-1", "test-zipcode-1",
         new Person.Address.ExtraInfo("100010000.0000")),
         new Person.Address("test-street-2", "test-zipcode-2", new Person.Address.ExtraInfo("test-extra-info"))),
@@ -66,4 +66,45 @@ Then decorate class field
 
         @TransformToType(typeAdapter = LocalDateTimeToOffsetDateTimeTypeAdapter.class)
         OffsetDateTime localDateTime;
+```
+- Use ClassFieldMapping for custom field maps of the same type
+
+```java
+## Source Class defined with id parameter 
+ static class Request {
+        String requesterId;
+        String id;
+
+        public Request(String requesterId, String id) {
+            this.requesterId = requesterId;
+            this.id = id;
+        }
+
+        public Request(String requesterId) {
+            this.requesterId = requesterId;
+        }
+    }
+    
+
+static class RequestDto {
+    
+  UUID requesterId;
+
+  /**
+   * Destination field identifier mapped to {@link Request#id }
+    */
+  @ClassFieldMapping(fields = { @SourceFieldMapping(sourceField = "id") })
+  String identifier;
+
+  public RequestDto() {
+  }
+
+  public UUID getRequesterId() {
+    return requesterId;
+  }
+
+  public String getIdentifier() {
+    return identifier;
+  }
+}
 ```

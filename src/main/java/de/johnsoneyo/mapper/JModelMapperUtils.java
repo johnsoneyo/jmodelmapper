@@ -1,5 +1,7 @@
 package de.johnsoneyo.mapper;
 
+import de.johnsoneyo.mapper.decorator.ClassFieldMapping;
+import de.johnsoneyo.mapper.decorator.SourceFieldMapping;
 import de.johnsoneyo.mapper.decorator.TransformToType;
 import de.johnsoneyo.mapper.decorator.TypeAdapter;
 import de.johnsoneyo.mapper.exception.JModelMapperException;
@@ -136,6 +138,32 @@ final class JModelMapperUtils {
                 } else {
 
                     Field outputField = getField(output, field.getName());
+
+                    if (outputField == null && obj != null) {
+                        if (obj.getClass().getPackageName().startsWith("java")) {
+
+                            for (Field destinationField : output.getClass().getDeclaredFields()) {
+                                Annotation[] annotations = destinationField.getDeclaredAnnotations();
+
+                                if (Utils.isNotEmpty(annotations)) {
+
+                                    for (Annotation annotation : annotations) {
+                                        if (annotation instanceof ClassFieldMapping) {
+
+                                            ClassFieldMapping classFieldMapping = (ClassFieldMapping) annotation;
+                                            SourceFieldMapping[] sourceFieldMapping = classFieldMapping.fields();
+                                            for (SourceFieldMapping sfm : sourceFieldMapping) {
+                                                if (sfm.sourceField().equals(field.getName())) {
+                                                    destinationField.set(output, obj);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     Object customJavaObject = null;
                     if (outputField != null) {
 
