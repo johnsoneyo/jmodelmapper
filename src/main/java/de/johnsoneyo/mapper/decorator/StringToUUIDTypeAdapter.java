@@ -4,7 +4,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 /**
- * String to UUID adapter class provided OOTB
+ * String to UUID adapter class provided
  */
 public class StringToUUIDTypeAdapter implements TypeAdapter<String, UUID> {
 
