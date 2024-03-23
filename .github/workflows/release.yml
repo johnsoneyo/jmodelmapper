@@ -15,10 +15,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         name: checking out ${{ github.ref }}
-      - run: | 
-        ./mvnw spotless:check
-        git checkout -b release/${MAVEN_VERSION_NUMBER}.${BUILD_NUMBER}
-        ./mvnw versions:set -DnewVersion=${MAVEN_VERSION_NUMBER}.${BUILD_NUMBER}
-        git commit -am "setting version ${MAVEN_VERSION_NUMBER}.${BUILD_NUMBER}"
-        git tag v${MAVEN_VERSION_NUMBER}.${BUILD_NUMBER}
-        git push origin v${MAVEN_VERSION_NUMBER}.${BUILD_NUMBER}
+      - name: maven package version
+        run: | 
+          ./mvnw spotless:check
+          git checkout -b release/${MAVEN_VERSION_NUMBER}.${BUILD_NUMBER}
+          ./mvnw versions:set -DnewVersion=${MAVEN_VERSION_NUMBER}.${BUILD_NUMBER}
+          git commit -am "setting version ${MAVEN_VERSION_NUMBER}.${BUILD_NUMBER}"
+          git tag v${MAVEN_VERSION_NUMBER}.${BUILD_NUMBER}
+          git push origin v${MAVEN_VERSION_NUMBER}.${BUILD_NUMBER}
