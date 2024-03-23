@@ -1,0 +1,24 @@
+name: Release dependency
+run-name: ${{ github.actor }} made a push
+on:
+  pull_request:
+    branches:
+      - 'release/1.x'
+
+env:
+  MAVEN_VERSION_NUMBER: 1
+  BUILD_NUMBER: ${{github.run_number}}
+
+jobs:
+  Build :
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        name: checking out ${{ github.ref }}
+      - run: | 
+        ./mvnw spotless:check
+        git checkout -b release/${MAVEN_VERSION_NUMBER}.${BUILD_NUMBER}
+        ./mvnw versions:set -DnewVersion=${MAVEN_VERSION_NUMBER}.${BUILD_NUMBER}
+        git commit -am "setting version ${MAVEN_VERSION_NUMBER}.${BUILD_NUMBER}"
+        git tag v${MAVEN_VERSION_NUMBER}.${BUILD_NUMBER}
+        git push origin v${MAVEN_VERSION_NUMBER}.${BUILD_NUMBER}
