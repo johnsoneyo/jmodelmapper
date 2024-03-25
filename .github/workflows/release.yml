@@ -1,7 +1,7 @@
 name: Release dependency
 run-name: ${{ github.actor }} made a push
 on:
-  pull_request:
+  push:
     branches:
       - 'release/1.x'
 
