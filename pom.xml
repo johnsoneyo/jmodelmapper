@@ -105,7 +105,7 @@
     <repository>
       <id>github</id>
       <name>GitHub Packages</name>
-      <url>https://maven.pkg.github.com/johnsoneyo/jmodel-mapper</url>
+      <url>https://maven.pkg.github.com/johnsoneyo/jmodelmapper</url>
     </repository>
   </distributionManagement>
 </project>
